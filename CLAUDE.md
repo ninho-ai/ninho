@@ -124,7 +124,7 @@ At session start, you should see `<ninho-context>` with PRD summaries. If not vi
    ```bash
    cat ~/.claude/settings.json
    ```
-   Should contain `"enabledPlugins": [".../ninho/adapters/claude-code"]`
+   Should contain `"enabledPlugins": {".../ninho/adapters/claude-code": true}`
 
 2. **Verify directories exist**:
    ```bash

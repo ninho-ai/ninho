@@ -17,9 +17,9 @@
    ```bash
    # Add to ~/.claude/settings.json
    {
-     "enabledPlugins": [
-       "/absolute/path/to/ninho/adapters/claude-code"
-     ]
+     "enabledPlugins": {
+       "/absolute/path/to/ninho/adapters/claude-code": true
+     }
    }
    ```
 
