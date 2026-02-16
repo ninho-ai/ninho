@@ -165,19 +165,19 @@ class Capture:
 
         return None
 
-    def get_last_assistant_summary(self, max_length: int = 200) -> Optional[str]:
+    def get_last_assistant_summary(self, max_total: int = 300) -> Optional[str]:
         """
-        Get a summary of the full assistant response to the last user prompt.
+        Get a high-level summary of the full assistant response.
 
-        Collects all assistant entries after the last user message,
-        extracts text, files edited, and tools used to build a
-        comprehensive one-line summary.
+        Extracts one short highlight per text block, producing a
+        semicolon-separated list of actions/messages. Appends files
+        edited when applicable.
 
         Args:
-            max_length: Maximum length for the text portion.
+            max_total: Maximum total length of the summary.
 
         Returns:
-            Summary string or None if no assistant response found.
+            Single-line summary string or None.
         """
         entries = self._load_transcript()
         if not entries:
@@ -193,11 +193,11 @@ class Capture:
         if last_user_idx == -1:
             return None
 
-        # Collect all assistant content after the last user message
-        all_text = []
-        tools_used = []
+        # Collect highlights and file info from all assistant turns
+        highlights = []
         files_edited = []
         files_read = []
+        bash_actions = []
 
         for entry in entries[last_user_idx + 1:]:
             if entry.get("type") != "assistant":
@@ -207,9 +207,9 @@ class Capture:
                 if not isinstance(block, dict):
                     continue
                 if block.get("type") == "text":
-                    text = block.get("text", "").strip()
-                    if text:
-                        all_text.append(text)
+                    highlight = self._extract_highlight(block.get("text", ""))
+                    if highlight and highlight not in highlights:
+                        highlights.append(highlight)
                 elif block.get("type") == "tool_use":
                     name = block.get("name", "")
                     inputs = block.get("input", {})
@@ -225,40 +225,84 @@ class Capture:
                             short = path.rsplit("/", 1)[-1]
                             if short not in files_read:
                                 files_read.append(short)
-                    if name not in tools_used:
-                        tools_used.append(name)
+                    elif name == "Bash":
+                        cmd = inputs.get("command", "")
+                        action = self._summarize_bash(cmd)
+                        if action and action not in bash_actions:
+                            bash_actions.append(action)
 
-        if not all_text and not tools_used:
+        if not highlights and not files_edited and not bash_actions:
             return None
 
-        # Build summary from combined text: first and last sentences
+        # Merge bash actions into highlights
+        for action in bash_actions:
+            if action not in highlights:
+                highlights.append(action)
+
+        # Build final summary
         parts = []
-        if all_text:
-            combined = " ".join(all_text)
-            # Collapse newlines and clean markdown artifacts
-            combined = re.sub(r'\s*\n\s*', ' ', combined)
-            combined = re.sub(r'\*\*|##|`{1,3}|---|\|', '', combined)
-            combined = re.sub(r'\s{2,}', ' ', combined).strip()
-            sentences = re.split(r'(?<=[.!?])\s+', combined)
-            sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
-
-            if sentences:
-                summary_text = sentences[0]
-                # Add last sentence if different and there are many
-                if len(sentences) > 3:
-                    last = sentences[-1]
-                    if last != summary_text:
-                        summary_text += " ... " + last
-                if len(summary_text) > max_length:
-                    summary_text = summary_text[:max_length] + "..."
-                parts.append(summary_text)
-
-        # Add files edited
+        if highlights:
+            parts.append("; ".join(highlights))
         if files_edited:
             parts.append(f"edited: {', '.join(files_edited[:5])}")
-
-        # Add files read (only if no edits, to keep it concise)
-        if not files_edited and files_read:
+        elif files_read:
             parts.append(f"read: {', '.join(files_read[:5])}")
 
-        return " | ".join(parts) if parts else None
+        result = " | ".join(parts)
+        if len(result) > max_total:
+            result = result[:max_total] + "..."
+        return result
+
+    @staticmethod
+    def _extract_highlight(text: str, max_len: int = 80) -> Optional[str]:
+        """Extract a single short highlight from a text block."""
+        if not text or not text.strip():
+            return None
+        # Collapse whitespace, strip markdown
+        clean = re.sub(r'\s*\n\s*', ' ', text)
+        clean = re.sub(r'\*\*|##|`{1,3}|---|\|', '', clean)
+        clean = re.sub(r'\s{2,}', ' ', clean).strip()
+        if len(clean) < 5:
+            return None
+        # Take first sentence
+        sentence = re.split(r'(?<=[.!?])\s', clean, maxsplit=1)[0].strip()
+        # Skip filler phrases
+        skip = ("let me", "now let", "good", "here's", "i can see",
+                "i'll", "looking at", "the user")
+        lower = sentence.lower()
+        if any(lower.startswith(s) for s in skip):
+            # Try second sentence instead
+            rest = clean[len(sentence):].strip()
+            if rest:
+                sentence = re.split(r'(?<=[.!?])\s', rest, maxsplit=1)[0].strip()
+            else:
+                return None
+        if len(sentence) < 5:
+            return None
+        if len(sentence) > max_len:
+            sentence = sentence[:max_len] + "..."
+        return sentence
+
+    @staticmethod
+    def _summarize_bash(cmd: str) -> Optional[str]:
+        """Extract a short action description from a bash command."""
+        if not cmd:
+            return None
+        cmd = cmd.strip().split("&&")[0].strip()
+        if cmd.startswith("git commit"):
+            return "committed changes"
+        if cmd.startswith("git push"):
+            return "pushed to remote"
+        if cmd.startswith("git add"):
+            return None  # staging is implied by commit
+        if "gh run watch" in cmd:
+            return "CI passed" if "--exit-status" in cmd else "watched CI"
+        if "gh run list" in cmd:
+            return None  # minor action
+        if cmd.startswith("python3 -m py_compile"):
+            return "verified compilation"
+        if cmd.startswith("ruff check") or cmd.startswith("python3 -m ruff"):
+            return "ran linter"
+        if "rm -rf" in cmd:
+            return f"removed {cmd.split()[-1].rsplit('/', 1)[-1]}"
+        return None
