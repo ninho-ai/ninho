@@ -3,11 +3,13 @@
 Stop hook for Ninho.
 
 Monitors conversation for PRD-worthy updates after each Claude response.
+Also detects PR-related activities for automatic linking.
 Runs asynchronously to avoid blocking the user's workflow.
 """
 
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -18,6 +20,7 @@ sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
 from capture import Capture
 from prd import PRD
+from pr_integration import PRIntegration
 from storage import Storage, ProjectStorage
 
 # Throttle settings
@@ -41,6 +44,49 @@ def update_throttle():
     """Update the throttle timestamp."""
     LAST_UPDATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     LAST_UPDATE_FILE.write_text(str(time.time()))
+
+
+def detect_pr_commands(transcript_path: str) -> dict:
+    """
+    Detect PR-related commands in the transcript.
+
+    Returns:
+        Dictionary with PR command info or None.
+    """
+    try:
+        with open(transcript_path, "r") as f:
+            lines = f.readlines()
+
+        # Check recent entries for PR commands
+        for line in reversed(lines[-50:]):  # Check last 50 entries
+            try:
+                entry = json.loads(line)
+                # Look for tool_use events with bash commands
+                if entry.get("type") == "assistant":
+                    content = entry.get("message", {}).get("content", [])
+                    for block in content:
+                        if block.get("type") == "tool_use" and block.get("name") == "Bash":
+                            command = block.get("input", {}).get("command", "")
+
+                            # Detect gh pr create
+                            if "gh pr create" in command:
+                                return {"type": "pr_create", "command": command}
+
+                            # Detect gh pr merge
+                            if "gh pr merge" in command:
+                                return {"type": "pr_merge", "command": command}
+
+                            # Detect git push (often precedes PR creation)
+                            if re.search(r"git push.*-u", command):
+                                return {"type": "branch_push", "command": command}
+
+            except json.JSONDecodeError:
+                continue
+
+    except (OSError, IOError):
+        pass
+
+    return None
 
 
 def detect_prd_signals(text: str) -> dict:
@@ -107,12 +153,162 @@ def detect_prd_signals(text: str) -> dict:
     return signals
 
 
+def handle_pr_creation(pr_integration: PRIntegration, capture: Capture, prd_manager: PRD) -> bool:
+    """
+    Handle automatic PR-to-PRD linking when PR is being created.
+
+    Returns:
+        True if PR was linked, False otherwise.
+    """
+    branch = pr_integration.get_current_branch()
+    if not branch or branch in ("main", "master"):
+        return False
+
+    # Check if already linked
+    existing = pr_integration.get_branch_mapping(branch)
+    if existing:
+        return False
+
+    # Detect PRD from branch name or modified files
+    prd_name = pr_integration.detect_prd_from_branch(branch)
+    if not prd_name:
+        prd_name = pr_integration.detect_prd_from_files()
+
+    if not prd_name:
+        # Try to detect from capture's feature context
+        prd_name = capture.detect_feature_context()
+
+    if not prd_name or not prd_manager.exists(prd_name):
+        return False
+
+    # Get incomplete requirements from PRD
+    requirements = pr_integration.get_prd_requirements(prd_name)
+    incomplete = [r["text"] for r in requirements if not r["completed"]]
+
+    if not incomplete:
+        return False
+
+    # Auto-link to all incomplete requirements (user can adjust later via command)
+    pr_integration.link_branch_to_requirements(branch, prd_name, incomplete)
+
+    print(f"🪺 Auto-linked branch '{branch}' to PRD '{prd_name}'")
+    print(f"   Requirements tracked: {len(incomplete)}")
+
+    # Check if PR exists and add to PRD
+    pr_info = pr_integration.get_pr_info()
+    if pr_info:
+        pr_integration.add_pr_to_prd(
+            prd_name,
+            pr_info["number"],
+            pr_info["url"],
+            branch,
+            incomplete[:3],  # Show first 3
+            pr_info.get("state", "Open"),
+        )
+        print(f"   PR #{pr_info['number']} added to PRD")
+
+    return True
+
+
+def surface_file_context(prd_manager: PRD, modified_files: list) -> bool:
+    """
+    Surface relevant PRD context when files are edited.
+
+    Returns:
+        True if context was surfaced, False otherwise.
+    """
+    if not modified_files:
+        return False
+
+    # Map files to PRDs
+    prd_names = prd_manager.list_prds()
+    if not prd_names:
+        return False
+
+    surfaced = []
+    for prd_name in prd_names:
+        prd_path = prd_manager.storage.get_prd_file(prd_name)
+        if not prd_path.exists():
+            continue
+
+        content = prd_path.read_text()
+
+        # Check if any modified files are in this PRD's Related Files
+        for file_path in modified_files:
+            if file_path in content:
+                # Extract relevant decisions
+                decisions = []
+                decision_pattern = r"\| (\d{4}-\d{2}-\d{2}) \| ([^|]+) \| ([^|]+) \|"
+                for match in re.finditer(decision_pattern, content):
+                    decisions.append({
+                        "date": match.group(1),
+                        "decision": match.group(2).strip(),
+                        "rationale": match.group(3).strip(),
+                    })
+
+                # Extract open questions
+                questions = []
+                in_questions = False
+                for line in content.split("\n"):
+                    if line.startswith("## Open Questions"):
+                        in_questions = True
+                    elif line.startswith("## ") and in_questions:
+                        in_questions = False
+                    elif in_questions and line.strip().startswith("- "):
+                        questions.append(line.strip()[2:])
+
+                if decisions or questions:
+                    surfaced.append({
+                        "prd": prd_name,
+                        "file": file_path,
+                        "decisions": decisions[-3:],  # Last 3 decisions
+                        "questions": questions[:2],  # First 2 questions
+                    })
+                break  # One match per PRD is enough
+
+    if not surfaced:
+        return False
+
+    # Output context (will be captured by Claude)
+    print("\n<ninho-file-context>")
+    for ctx in surfaced[:2]:  # Limit to 2 PRDs
+        print(f"## Editing files related to: {ctx['prd'].replace('-', ' ').title()}")
+
+        if ctx["decisions"]:
+            print("\nRecent decisions:")
+            for d in ctx["decisions"]:
+                print(f"- {d['decision']} ({d['date']})")
+
+        if ctx["questions"]:
+            print("\nOpen questions:")
+            for q in ctx["questions"]:
+                print(f"- {q}")
+
+    print("</ninho-file-context>\n")
+    return True
+
+
+def handle_pr_merge(pr_integration: PRIntegration) -> bool:
+    """
+    Handle automatic requirement completion when PR is merged.
+
+    Returns:
+        True if requirements were marked complete, False otherwise.
+    """
+    branch = pr_integration.get_current_branch()
+    if not branch:
+        return False
+
+    count = pr_integration.mark_requirements_complete(branch)
+    if count > 0:
+        print(f"🪺 Auto-completed {count} requirement(s) in PRD")
+        return True
+
+    return False
+
+
 def main():
     """Main entry point for Stop hook."""
-    # Check throttle
-    if should_throttle():
-        return 0
-
     # Read hook input from stdin
     try:
         input_data = json.load(sys.stdin)
@@ -127,6 +323,27 @@ def main():
 
     # Initialize components
     capture = Capture(transcript_path)
+    project_storage = ProjectStorage(cwd)
+    prd_manager = PRD(project_storage)
+    pr_integration = PRIntegration(project_storage)
+
+    # Check for PR-related commands (high priority, no throttle)
+    pr_command = detect_pr_commands(transcript_path)
+    if pr_command:
+        if pr_command["type"] == "pr_create":
+            handle_pr_creation(pr_integration, capture, prd_manager)
+            return 0
+        elif pr_command["type"] == "pr_merge":
+            handle_pr_merge(pr_integration)
+            return 0
+        elif pr_command["type"] == "branch_push":
+            # Pre-emptively link branch when pushing
+            handle_pr_creation(pr_integration, capture, prd_manager)
+            return 0
+
+    # Check throttle for regular PRD updates
+    if should_throttle():
+        return 0
 
     # Get recent prompts
     recent_prompts = capture.get_recent_prompts(3)
@@ -160,10 +377,6 @@ def main():
         else:
             feature = "general"
 
-    # Initialize project storage
-    project_storage = ProjectStorage(cwd)
-    prd_manager = PRD(project_storage)
-
     # Create PRD if it doesn't exist
     if not prd_manager.exists(feature):
         prd_manager.create(feature)
@@ -173,6 +386,9 @@ def main():
     modified_files = capture.get_modified_files()
     for file_path in modified_files:
         prd_manager.add_file(feature, file_path)
+
+    # Surface file-related context
+    surface_file_context(prd_manager, modified_files)
 
     # Update throttle
     update_throttle()

@@ -1,17 +1,39 @@
 {
   "name": "ninho",
   "version": "1.0.0",
-  "description": "Where your codebase decisions live - track context from AI coding sessions",
+  "description": "Automatic PRD and context capture for AI coding sessions - never lose decisions again",
   "author": {
     "name": "Ninho",
+    "email": "hello@ninho.ai",
     "url": "https://ninho.ai"
   },
-  "repository": "https://github.com/ninho-ai/ninho",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninho-ai/ninho"
+  },
+  "homepage": "https://ninho.ai",
+  "license": "MIT",
   "keywords": [
     "prd",
     "context",
     "memory",
     "learnings",
-    "documentation"
-  ]
+    "documentation",
+    "requirements",
+    "decisions",
+    "pr-integration"
+  ],
+  "categories": [
+    "productivity",
+    "documentation",
+    "memory"
+  ],
+  "capabilities": {
+    "hooks": ["SessionStart", "SessionEnd", "PreCompact", "Stop"],
+    "commands": ["status", "prd-list", "search", "digest", "link-pr", "pr-context"],
+    "agents": ["prd-maintainer"]
+  },
+  "requirements": {
+    "python": ">=3.9"
+  }
 }

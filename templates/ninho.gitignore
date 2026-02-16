@@ -1,0 +1,42 @@
+# Ninho .gitignore template
+# Copy relevant lines to your project's .gitignore
+
+# ============================================
+# RECOMMENDED: Track PRDs, ignore prompts
+# ============================================
+
+# Track PRDs (valuable for team context)
+# !.ninho/prds/
+
+# Ignore raw prompts (can be verbose)
+.ninho/prompts/
+
+# Ignore PR mappings (local state)
+.ninho/pr-mappings.json
+
+# ============================================
+# ALTERNATIVE: Track everything
+# ============================================
+# Just don't add any .ninho/ lines to .gitignore
+
+# ============================================
+# ALTERNATIVE: Ignore everything
+# ============================================
+# .ninho/
+
+# ============================================
+# NOTES
+# ============================================
+# PRDs contain:
+#   - Requirements and their status
+#   - Decisions and rationale
+#   - Constraints and open questions
+#   - Session logs with prompt references
+#
+# Prompts contain:
+#   - Raw user prompts from sessions
+#   - Can be verbose and contain sensitive info
+#
+# PR mappings contain:
+#   - Branch-to-PRD links
+#   - Local development state

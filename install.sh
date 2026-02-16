@@ -92,11 +92,26 @@ else
     echo "{\"enabledPlugins\": [\"$PLUGIN_PATH\"]}" > "$SETTINGS"
 fi
 
+# Install CLI (optional, for standalone use)
+if command -v pip3 &> /dev/null; then
+    echo "Installing Ninho CLI..."
+    pip3 install --quiet -e "$NINHO_HOME/packages/cli" 2>/dev/null || true
+fi
+
 echo ""
 echo "✅ Ninho installed!"
 echo ""
 echo "   Location: $NINHO_HOME"
-echo "   Storage:  $NINHO_HOME/storage/"
+echo "   Plugin:   $PLUGIN_PATH"
 echo ""
-echo "Restart Claude Code to activate."
-echo "Run '/ninho:status' to verify."
+echo "What happens now:"
+echo "   1. Restart Claude Code to activate the plugin"
+echo "   2. Just code normally - Ninho works in the background"
+echo "   3. Run '/ninho:status' to see captured context"
+echo ""
+echo "Ninho automatically captures:"
+echo "   - PRDs from your discussions"
+echo "   - Learnings from corrections"
+echo "   - PR-to-PRD links when you create PRs"
+echo ""
+echo "Documentation: https://ninho.ai"

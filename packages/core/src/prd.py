@@ -363,6 +363,22 @@ class PRD:
                 )
                 self.storage.write_file(self.storage.get_prd_file(name), new_content)
 
+    def list_prds(self) -> list:
+        """
+        List all PRDs in the project.
+
+        Returns:
+            List of PRD names.
+        """
+        prds_path = self.storage.prds_path
+        if not prds_path.exists():
+            return []
+
+        return [
+            p.stem for p in prds_path.glob("*.md")
+            if p.is_file()
+        ]
+
     def get_summary(self, name: str) -> dict:
         """
         Get a summary of a PRD.
@@ -408,3 +424,53 @@ class PRD:
             "latest_decision": latest_decision,
             "total_decisions": len(decisions),
         }
+
+    def get_stale_questions(self, name: str, days_threshold: int = 7) -> list:
+        """
+        Get questions that have been open for more than the threshold.
+
+        Args:
+            name: PRD name.
+            days_threshold: Number of days after which a question is stale.
+
+        Returns:
+            List of stale question dictionaries with 'text' and 'days_old'.
+        """
+        content = self.read(name)
+        if not content:
+            return []
+
+        stale_questions = []
+        today = datetime.now()
+
+        # Find questions section
+        questions_pattern = r"## Open Questions\n(.*?)\n## "
+        questions_match = re.search(questions_pattern, content, re.DOTALL)
+
+        if not questions_match:
+            return []
+
+        questions_text = questions_match.group(1)
+
+        # Parse questions with dates
+        # Format: "- Question text *(asked YYYY-MM-DD)*"
+        question_pattern = r"- (.+?) \*\(asked (\d{4}-\d{2}-\d{2})\)\*"
+
+        for match in re.finditer(question_pattern, questions_text):
+            question_text = match.group(1).strip()
+            date_str = match.group(2)
+
+            try:
+                asked_date = datetime.strptime(date_str, "%Y-%m-%d")
+                days_old = (today - asked_date).days
+
+                if days_old >= days_threshold:
+                    stale_questions.append({
+                        "text": question_text,
+                        "days_old": days_old,
+                        "asked_date": date_str,
+                    })
+            except ValueError:
+                continue
+
+        return stale_questions

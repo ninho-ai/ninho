@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ninho-core"
+version = "1.0.0"
+description = "Core library for AI coding context management"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Ninho", email = "hello@ninho.ai"}
+]
+keywords = ["ai-coding", "context", "claude-code", "prd", "memory"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Version Control",
+]
+requires-python = ">=3.9"
+
+[project.urls]
+Homepage = "https://ninho.ai"
+Repository = "https://github.com/ninho-ai/ninho"
+Documentation = "https://ninho.ai/docs"
+Issues = "https://github.com/ninho-ai/ninho/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
