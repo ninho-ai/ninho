@@ -121,12 +121,12 @@ User Prompt → PRDCapture.extract_prd_items() → PRD Module
 Use the `--plugin-dir` flag to load Ninho directly from its source directory:
 
 ```bash
-claude --plugin-dir /path/to/ninho/adapters/claude-code
+claude --plugin-dir /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code
 ```
 
 This is the fastest way to test changes. You can load multiple plugins:
 ```bash
-claude --plugin-dir ./ninho/adapters/claude-code --plugin-dir ./other-plugin
+claude --plugin-dir /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code --plugin-dir ./other-plugin
 ```
 
 ### For Permanent Installation
@@ -135,10 +135,10 @@ Use the Claude Code CLI to install the plugin:
 
 ```bash
 # Install for the current project
-claude plugin install /path/to/ninho/adapters/claude-code --scope project
+claude plugin install /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code --scope project
 
 # Install for all projects (user-wide)
-claude plugin install /path/to/ninho/adapters/claude-code --scope user
+claude plugin install /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code --scope user
 ```
 
 Other plugin management commands:
@@ -175,7 +175,7 @@ At session start, you should see `<ninho-context>` with PRD summaries. If not vi
 
    If it shows `Found 0 plugins`, the plugin is not loaded. Restart with `--plugin-dir`:
    ```bash
-   claude --plugin-dir /path/to/ninho/adapters/claude-code
+   claude --plugin-dir /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code
    ```
 
 2. **Check plugin.json capabilities match hooks.json**:
@@ -203,7 +203,7 @@ At session start, you should see `<ninho-context>` with PRD summaries. If not vi
 
 Before major sessions, ensure Ninho is current:
 ```bash
-cd /path/to/ninho && git pull origin main
+cd /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho && git pull origin main
 ```
 
 ### When Prompts Are Captured
@@ -316,12 +316,12 @@ ls -la .ninho/prompts/
 
 **Development (recommended for local work):**
 ```bash
-claude --plugin-dir /path/to/ninho/adapters/claude-code
+claude --plugin-dir /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code
 ```
 
 **Permanent installation via CLI:**
 ```bash
-claude plugin install /path/to/ninho/adapters/claude-code --scope project
+claude plugin install /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code --scope project
 ```
 
 **Marketplace installation (for end users):**
@@ -342,7 +342,7 @@ After adding a new hook to `hooks.json`, always update `plugin.json` capabilitie
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Prompts not saved | Plugin not loaded | Start with `--plugin-dir` or run `claude plugin install` |
-| `Found 0 plugins` in debug log | Plugin not loaded | Use `claude --plugin-dir /path/to/adapter` |
+| `Found 0 plugins` in debug log | Plugin not loaded | Use `claude --plugin-dir /Users/adalbertoferreira/Repositories/ClaudeMemory/ninho/adapters/claude-code` |
 | Plugin loaded but hooks don't fire | Hook missing from `plugin.json` capabilities | Add missing hook to `capabilities.hooks` in `plugin.json` |
 | Commands not showing | Plugin not loaded or wrong scope | Reinstall with correct `--scope` flag |
 
