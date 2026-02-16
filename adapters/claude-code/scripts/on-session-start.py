@@ -496,9 +496,8 @@ def format_compact_context(
                 parts.append(f"{prd['open_questions']} questions")
             status = f" ({', '.join(parts)})" if parts else ""
 
-            # Show latest 2 decisions inline
+            # Show latest decision inline
             decisions_text = ""
-            prd_path = prd.get("_prd_path")
             if prd.get("latest_decision"):
                 decisions_text = f" | Latest: {prd['latest_decision']['text'][:60]}"
 
