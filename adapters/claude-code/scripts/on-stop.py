@@ -21,7 +21,7 @@ sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 from capture import Capture
 from prd import PRD
 from pr_integration import PRIntegration
-from storage import Storage, ProjectStorage
+from storage import ProjectStorage
 
 # Throttle settings
 THROTTLE_SECONDS = 30
