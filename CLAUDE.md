@@ -96,9 +96,10 @@ Ninho automatically detects requirements, decisions, constraints, and questions 
 
 ### Capture Triggers
 
-PRD content is captured at two lifecycle events:
-1. **PreCompact** - Before context compression (critical, prevents data loss)
-2. **SessionEnd** - Final sweep when session ends
+Prompts and PRD content are captured at multiple lifecycle events:
+1. **UserPromptSubmit** - Every prompt is captured immediately when submitted
+2. **PreCompact** - Backup capture before context compression (prevents data loss)
+3. **SessionEnd** - Final sweep when session ends
 
 ### Data Flow
 
@@ -147,13 +148,12 @@ cd /path/to/ninho && git pull origin main
 
 ### When Prompts Are Captured
 
-Prompts are captured at two lifecycle events:
-1. **PreCompact** - Before context compression (prevents data loss)
-2. **SessionEnd** - Final sweep when session ends
+Prompts are captured immediately and at backup lifecycle events:
+1. **UserPromptSubmit** - Every prompt is saved the moment you submit it
+2. **PreCompact** - Backup capture before context compression
+3. **SessionEnd** - Final sweep when session ends
 
-If prompts aren't appearing immediately, they will be captured when you:
-- End the current session
-- Hit memory pressure (triggers PreCompact)
+Prompts appear in `.ninho/prompts/YYYY-MM-DD.md` immediately after submission.
 
 ### Auto-Summary Generation
 

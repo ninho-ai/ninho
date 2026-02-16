@@ -11,6 +11,17 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/on-user-prompt.py",
+            "async": false
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
