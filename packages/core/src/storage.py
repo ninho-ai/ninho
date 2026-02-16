@@ -298,21 +298,49 @@ class ProjectStorage:
 
         # Format timestamp
         if timestamp is None:
-            time_str = datetime.now().strftime("%H:%M:%S")
+            time_str = datetime.now().strftime("%H:%M")
         elif isinstance(timestamp, str) and "T" in timestamp:
             try:
                 dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-                time_str = dt.strftime("%H:%M:%S")
+                time_str = dt.strftime("%H:%M")
             except ValueError:
                 time_str = timestamp
         else:
             time_str = str(timestamp)
 
-        # Format prompt entry
-        entry = f"## [{feature}] {time_str}\n\n> {prompt_text}\n\n---\n\n"
+        # Ensure blank line separator from previous entry
+        prefix = "\n" if current_content and not current_content.endswith("\n\n") else ""
+
+        # Format prompt entry (compact: no --- separator, single trailing newline
+        # so response summary can follow immediately)
+        entry = f"{prefix}## {time_str} [{feature}]\n> {prompt_text}\n"
 
         # Append to file
         self.append_file(file_path, entry)
 
         # Return line reference
         return f"prompts/{date.strftime('%Y-%m-%d')}.md#L{line_count + 1}"
+
+    def append_response_summary(
+        self,
+        summary: str,
+        date: Optional[datetime] = None,
+    ) -> None:
+        """
+        Append an LLM response summary to the daily prompts file.
+
+        Appends after the last prompt entry so each prompt is paired
+        with the response it triggered.
+
+        Args:
+            summary: Brief summary of the LLM response.
+            date: Date for the file. Defaults to today.
+        """
+        if date is None:
+            date = datetime.now()
+
+        file_path = self.prompts_path / f"{date.strftime('%Y-%m-%d')}.md"
+        if not file_path.exists():
+            return
+
+        self.append_file(file_path, f"\u2190 {summary}\n")

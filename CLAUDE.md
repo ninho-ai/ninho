@@ -114,25 +114,85 @@ User Prompt → PRDCapture.extract_prd_items() → PRD Module
                     └─► Prompt saved to .ninho/prompts/YYYY-MM-DD.md
 ```
 
+## Installing and Loading the Plugin
+
+### For Development (Local Testing)
+
+Use the `--plugin-dir` flag to load Ninho directly from its source directory:
+
+```bash
+claude --plugin-dir /path/to/ninho/adapters/claude-code
+```
+
+This is the fastest way to test changes. You can load multiple plugins:
+```bash
+claude --plugin-dir ./ninho/adapters/claude-code --plugin-dir ./other-plugin
+```
+
+### For Permanent Installation
+
+Use the Claude Code CLI to install the plugin:
+
+```bash
+# Install for the current project
+claude plugin install /path/to/ninho/adapters/claude-code --scope project
+
+# Install for all projects (user-wide)
+claude plugin install /path/to/ninho/adapters/claude-code --scope user
+```
+
+Other plugin management commands:
+```bash
+claude plugin uninstall ninho
+claude plugin enable ninho
+claude plugin disable ninho
+claude plugin update ninho
+```
+
+### For External Distribution (Marketplace)
+
+When Ninho is published to a marketplace, users install it with:
+```bash
+claude plugin install ninho@marketplace-name
+```
+
+Or via the interactive `/plugin` command in Claude Code, under the **Discover** tab.
+
 ## Verifying Ninho is Active
 
 ### Quick Health Check
 
 At session start, you should see `<ninho-context>` with PRD summaries. If not visible:
 
-1. **Check plugin registration**:
+1. **Check plugin is loaded** (CRITICAL - most common failure point):
    ```bash
-   cat ~/.claude/settings.json
+   # Verify via debug log (definitive check)
+   ls -t ~/.claude/debug/*.txt | head -1 | xargs grep -i "plugin"
    ```
-   Should contain `"enabledPlugins": {".../ninho/adapters/claude-code": true}`
+   Look for:
+   - `Found N plugins (N enabled, N disabled)` - should show >= 1 enabled
+   - `Registered N hooks from N plugins` - should show >= 1
 
-2. **Verify directories exist**:
+   If it shows `Found 0 plugins`, the plugin is not loaded. Restart with `--plugin-dir`:
+   ```bash
+   claude --plugin-dir /path/to/ninho/adapters/claude-code
+   ```
+
+2. **Check plugin.json capabilities match hooks.json**:
+   ```bash
+   cat ninho/adapters/claude-code/.claude-plugin/plugin.json
+   ```
+   The `capabilities.hooks` array MUST list every hook event defined in `hooks/hooks.json`.
+   If a hook (e.g., `UserPromptSubmit`) is in `hooks.json` but missing from `plugin.json`,
+   it will be silently ignored even if the plugin is loaded.
+
+3. **Verify directories exist**:
    ```bash
    ls -la ~/.ninho/
    ls -la .ninho/
    ```
 
-3. **Check for captured data**:
+4. **Check for captured data**:
    ```bash
    ls -la .ninho/prds/
    ls -la .ninho/prompts/
@@ -232,23 +292,63 @@ Use these phrases naturally - Ninho captures them automatically.
 
 ### Debug
 ```bash
-# Check logs
+# 1. Check if plugin is loaded in current session
+ls -t ~/.claude/debug/*.txt | head -1 | xargs grep "Found.*plugin"
+
+# 2. Check if hooks fired in current session
+ls -t ~/.claude/debug/*.txt | head -1 | xargs grep "hook"
+
+# 3. Check Ninho logs
 cat ~/.ninho/ninho.log | tail -20
 
-# Verify directories exist
+# 4. Verify plugin.json capabilities match hooks.json
+cat ninho/adapters/claude-code/.claude-plugin/plugin.json
+cat ninho/adapters/claude-code/hooks/hooks.json
+
+# 5. Verify data directories exist
 ls -la ~/.ninho/
 ls -la .ninho/
-
-# Check for PRDs
 ls -la .ninho/prds/
-
-# Check for captured prompts
 ls -la .ninho/prompts/
 ```
 
-### Plugin Registration
-The plugin should be registered at:
-`~/.claude/settings.json` -> `enabledPlugins` array
+### Plugin Loading Methods
+
+**Development (recommended for local work):**
+```bash
+claude --plugin-dir /path/to/ninho/adapters/claude-code
+```
+
+**Permanent installation via CLI:**
+```bash
+claude plugin install /path/to/ninho/adapters/claude-code --scope project
+```
+
+**Marketplace installation (for end users):**
+```bash
+claude plugin install ninho@marketplace-name
+```
+
+### Keeping plugin.json and hooks.json in Sync
+
+Every hook event in `hooks/hooks.json` MUST also appear in `.claude-plugin/plugin.json` under `capabilities.hooks`. If they diverge, hooks will silently fail to fire.
+
+**Current required hooks**: `SessionStart`, `UserPromptSubmit`, `SessionEnd`, `PreCompact`, `Stop`
+
+After adding a new hook to `hooks.json`, always update `plugin.json` capabilities to match.
+
+### Troubleshooting Plugin Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Prompts not saved | Plugin not loaded | Start with `--plugin-dir` or run `claude plugin install` |
+| `Found 0 plugins` in debug log | Plugin not loaded | Use `claude --plugin-dir /path/to/adapter` |
+| Plugin loaded but hooks don't fire | Hook missing from `plugin.json` capabilities | Add missing hook to `capabilities.hooks` in `plugin.json` |
+| Commands not showing | Plugin not loaded or wrong scope | Reinstall with correct `--scope` flag |
+
+**Note:** `~/.claude/plugins/installed_plugins.json` is an internal tracking file managed by the CLI.
+Do NOT edit it manually — use `claude plugin install/uninstall` commands instead.
+Similarly, `~/.claude/settings.json` `enabledPlugins` is a legacy field and should not be relied on.
 
 ## Session End Procedure
 

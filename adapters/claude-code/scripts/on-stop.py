@@ -21,7 +21,7 @@ sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 from capture import Capture
 from prd import PRD
 from pr_integration import PRIntegration
-from storage import ProjectStorage
+from storage import ProjectStorage, Storage
 
 # Throttle settings
 THROTTLE_SECONDS = 30
@@ -326,6 +326,11 @@ def main():
     project_storage = ProjectStorage(cwd)
     prd_manager = PRD(project_storage)
     pr_integration = PRIntegration(project_storage)
+
+    # Append response summary to today's prompt file (always, no throttle)
+    response_summary = capture.get_last_assistant_summary()
+    if response_summary:
+        project_storage.append_response_summary(response_summary)
 
     # Check for PR-related commands (high priority, no throttle)
     pr_command = detect_pr_commands(transcript_path)

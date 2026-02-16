@@ -164,3 +164,51 @@ class Capture:
                 return parts[1].replace("_", "-")
 
         return None
+
+    def get_last_assistant_summary(self, max_length: int = 150) -> Optional[str]:
+        """
+        Get a brief summary of the last assistant response.
+
+        Extracts the first sentence of text and lists tools used.
+
+        Args:
+            max_length: Maximum length for the text portion.
+
+        Returns:
+            Summary string or None if no assistant response found.
+        """
+        entries = self._load_transcript()
+
+        for entry in reversed(entries):
+            if entry.get("type") == "assistant":
+                message = entry.get("message", {})
+                content = message.get("content", [])
+
+                text_parts = []
+                tools_used = []
+
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                        elif block.get("type") == "tool_use":
+                            tools_used.append(block.get("name", ""))
+
+                summary_parts = []
+
+                if text_parts:
+                    full_text = " ".join(text_parts).strip()
+                    # Get first sentence
+                    first_sentence = re.split(r'(?<=[.!?])\s', full_text, maxsplit=1)[0]
+                    if len(first_sentence) > max_length:
+                        first_sentence = first_sentence[:max_length] + "..."
+                    summary_parts.append(first_sentence)
+
+                if tools_used:
+                    unique_tools = list(dict.fromkeys(tools_used))
+                    summary_parts.append(f"[{', '.join(unique_tools)}]")
+
+                if summary_parts:
+                    return " ".join(summary_parts)
+
+        return None
