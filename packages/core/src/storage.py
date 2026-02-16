@@ -362,7 +362,9 @@ class ProjectStorage:
 
         file_path = self.prompts_path / f"{date.strftime('%Y-%m-%d')}.md"
         if file_path.exists():
-            self.append_file(file_path, f"\u2190 {summary.strip()}\n")
+            # Collapse to single line to prevent format breakage
+            one_line = " ".join(summary.strip().split())
+            self.append_file(file_path, f"\u2190 {one_line}\n")
 
         pending_path.unlink(missing_ok=True)
         return True

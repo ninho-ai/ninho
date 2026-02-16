@@ -235,8 +235,10 @@ class Capture:
         parts = []
         if all_text:
             combined = " ".join(all_text)
-            # Clean markdown artifacts
-            combined = re.sub(r'\*\*|##|`{1,3}', '', combined).strip()
+            # Collapse newlines and clean markdown artifacts
+            combined = re.sub(r'\s*\n\s*', ' ', combined)
+            combined = re.sub(r'\*\*|##|`{1,3}|---|\|', '', combined)
+            combined = re.sub(r'\s{2,}', ' ', combined).strip()
             sentences = re.split(r'(?<=[.!?])\s+', combined)
             sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
 
