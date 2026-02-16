@@ -9,7 +9,10 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from .storage import Storage
+try:
+    from .storage import Storage
+except ImportError:
+    from storage import Storage
 
 
 class Learnings:

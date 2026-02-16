@@ -218,3 +218,61 @@ class ProjectStorage:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "a", encoding="utf-8") as f:
             f.write(content)
+
+    def get_prompt_index_path(self) -> Path:
+        """Get path to prompt deduplication index."""
+        return self.ninho_path / "prompt-index.json"
+
+    def append_prompt(
+        self,
+        prompt_text: str,
+        feature: str,
+        timestamp: Optional[str] = None,
+        date: Optional[datetime] = None,
+    ) -> str:
+        """
+        Append prompt to daily prompts file.
+
+        Args:
+            prompt_text: The prompt text to save.
+            feature: Feature name for tagging.
+            timestamp: Optional timestamp string.
+            date: Date for the file. Defaults to today.
+
+        Returns:
+            Line reference string (e.g., "prompts/2026-02-16.md#L42").
+        """
+        if date is None:
+            date = datetime.now()
+
+        file_path = self.prompts_path / f"{date.strftime('%Y-%m-%d')}.md"
+
+        # Create file with header if it doesn't exist
+        if not file_path.exists():
+            header = f"# Prompts - {date.strftime('%Y-%m-%d')}\n\n"
+            self.write_file(file_path, header)
+
+        # Count current lines to get line number
+        current_content = self.read_file(file_path) or ""
+        line_count = len(current_content.split("\n"))
+
+        # Format timestamp
+        if timestamp is None:
+            time_str = datetime.now().strftime("%H:%M:%S")
+        elif isinstance(timestamp, str) and "T" in timestamp:
+            try:
+                dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                time_str = dt.strftime("%H:%M:%S")
+            except ValueError:
+                time_str = timestamp
+        else:
+            time_str = str(timestamp)
+
+        # Format prompt entry
+        entry = f"## [{feature}] {time_str}\n\n> {prompt_text}\n\n---\n\n"
+
+        # Append to file
+        self.append_file(file_path, entry)
+
+        # Return line reference
+        return f"prompts/{date.strftime('%Y-%m-%d')}.md#L{line_count + 1}"

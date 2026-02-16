@@ -2,11 +2,12 @@
 """
 SessionEnd hook for Ninho.
 
-Extracts learnings from the completed session and saves them to daily log.
+Extracts learnings and PRD content from the completed session.
 Runs asynchronously after the user exits.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -16,7 +17,9 @@ sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
 from capture import Capture
 from learnings import Learnings
-from storage import Storage
+from prd import PRD
+from prd_capture import PRDCapture
+from storage import ProjectStorage, Storage
 
 
 def main():
@@ -33,10 +36,15 @@ def main():
         print("Error: No transcript_path provided", file=sys.stderr)
         return 1
 
+    cwd = input_data.get("cwd", os.getcwd())
+
     # Initialize components
     storage = Storage()
+    project_storage = ProjectStorage(cwd)
     capture = Capture(transcript_path)
     learnings_manager = Learnings(storage)
+    prd_capture = PRDCapture(project_storage)
+    prd_manager = PRD(project_storage)
 
     # Extract prompts
     prompts = capture.get_user_prompts()
@@ -44,15 +52,55 @@ def main():
         print("No prompts found in transcript")
         return 0
 
-    # Extract learnings
+    # Extract and save learnings
     learnings = learnings_manager.extract_learnings(prompts)
-    if not learnings:
-        print("No learnings detected in session")
-        return 0
+    if learnings:
+        saved_count = learnings_manager.save_learnings(learnings)
+        print(f"Saved {saved_count} new learnings to daily log")
 
-    # Save learnings
-    saved_count = learnings_manager.save_learnings(learnings)
-    print(f"Saved {saved_count} new learnings to daily log")
+    # Extract and save PRD items (final sweep for anything missed by PreCompact)
+    prd_items = prd_capture.extract_prd_items(prompts)
+    if prd_items:
+        # Detect feature context from modified files
+        feature = capture.detect_feature_context() or "general"
+
+        # Create PRD if it doesn't exist
+        if not prd_manager.exists(feature):
+            prd_manager.create(feature)
+
+        # Add modified files to PRD
+        modified_files = capture.get_modified_files()
+        for file_path in modified_files:
+            prd_manager.add_file(feature, file_path)
+
+        # Process each captured item
+        for item in prd_items:
+            item_type = item.get("type")
+            text = item.get("text", "")
+            summary = item.get("summary", text[:80])
+            timestamp = item.get("timestamp")
+
+            # Save prompt and get reference
+            prompt_ref = project_storage.append_prompt(text, feature, timestamp)
+
+            if item_type == "requirement" or item_type == "bug":
+                prd_manager.add_requirement(feature, summary)
+                prd_manager.add_session_log(feature, f"Added requirement: {summary[:50]}...", prompt_ref)
+
+            elif item_type == "decision":
+                rationale = item.get("rationale", "See discussion")
+                prd_manager.add_decision(feature, summary, rationale)
+                prd_manager.add_session_log(feature, f"Decided: {summary[:50]}...", prompt_ref)
+
+            elif item_type == "constraint":
+                prd_manager.add_constraint(feature, summary)
+                prd_manager.add_session_log(feature, f"Added constraint: {summary[:50]}...", prompt_ref)
+
+            elif item_type == "question":
+                prd_manager.add_question(feature, summary)
+                prd_manager.add_session_log(feature, f"Open question: {summary[:50]}...", prompt_ref)
+
+        print(f"SessionEnd: Captured {len(prd_items)} PRD items for '{feature}'")
 
     return 0
 

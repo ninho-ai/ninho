@@ -9,7 +9,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .storage import ProjectStorage
+try:
+    from .storage import ProjectStorage
+except ImportError:
+    from storage import ProjectStorage
 
 
 class PRD:
