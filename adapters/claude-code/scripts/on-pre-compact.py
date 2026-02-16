@@ -51,6 +51,22 @@ def main():
     if not prompts:
         return 0
 
+    # Detect feature context for tagging
+    feature = capture.detect_feature_context() or "general"
+
+    # Save ALL prompts (not just PRD-worthy ones) for summarization
+    saved_prompt_count = 0
+    for prompt in prompts:
+        text = prompt.get("text", "")
+        timestamp = prompt.get("timestamp")
+        if text and not prd_capture._is_duplicate(text):
+            project_storage.append_prompt(text, feature, timestamp)
+            prd_capture._mark_as_seen(text)
+            saved_prompt_count += 1
+
+    if saved_prompt_count > 0:
+        print(f"Pre-compact: Saved {saved_prompt_count} prompts for summarization")
+
     # Extract and save learnings
     learnings = learnings_manager.extract_learnings(prompts)
     if learnings:
@@ -61,9 +77,6 @@ def main():
     # Extract and save PRD items
     prd_items = prd_capture.extract_prd_items(prompts)
     if prd_items:
-        # Detect feature context from modified files
-        feature = capture.detect_feature_context() or "general"
-
         # Create PRD if it doesn't exist
         if not prd_manager.exists(feature):
             prd_manager.create(feature)
@@ -78,10 +91,11 @@ def main():
             item_type = item.get("type")
             text = item.get("text", "")
             summary = item.get("summary", text[:80])
-            timestamp = item.get("timestamp")
 
-            # Save prompt and get reference
-            prompt_ref = project_storage.append_prompt(text, feature, timestamp)
+            # Generate prompt reference (prompt already saved above)
+            from datetime import datetime
+            prompt_date = datetime.now().strftime("%Y-%m-%d")
+            prompt_ref = f"prompts/{prompt_date}.md"
 
             if item_type == "requirement" or item_type == "bug":
                 prd_manager.add_requirement(feature, summary)

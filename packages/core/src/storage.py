@@ -148,6 +148,9 @@ class ProjectStorage:
         directories = [
             self.ninho_path / "prds",
             self.ninho_path / "prompts",
+            self.ninho_path / "summaries" / "weekly",
+            self.ninho_path / "summaries" / "monthly",
+            self.ninho_path / "summaries" / "yearly",
         ]
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
@@ -161,6 +164,43 @@ class ProjectStorage:
     def prompts_path(self) -> Path:
         """Get path for prompts directory."""
         return self.ninho_path / "prompts"
+
+    @property
+    def summaries_path(self) -> Path:
+        """Get path for summaries directory."""
+        return self.ninho_path / "summaries"
+
+    def get_summary_file(self, period_type: str, period: str) -> Path:
+        """
+        Get path for a specific summary file.
+
+        Args:
+            period_type: Type of summary ('weekly', 'monthly', 'yearly').
+            period: Period identifier (e.g., '2026-W07', '2026-02', '2026').
+
+        Returns:
+            Path to the summary file.
+        """
+        return self.summaries_path / period_type / f"{period}.md"
+
+    def list_summaries(self, period_type: str) -> list[str]:
+        """
+        List all summaries of a given type.
+
+        Args:
+            period_type: Type of summary ('weekly', 'monthly', 'yearly').
+
+        Returns:
+            List of period identifiers.
+        """
+        summary_dir = self.summaries_path / period_type
+        if not summary_dir.exists():
+            return []
+        return sorted([f.stem for f in summary_dir.glob("*.md")])
+
+    def get_summary_state_path(self) -> Path:
+        """Get path to summary state file."""
+        return self.ninho_path / "summary-state.json"
 
     def get_prd_file(self, name: str) -> Path:
         """

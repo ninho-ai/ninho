@@ -18,6 +18,7 @@ sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
 from prd import PRD
 from storage import Storage, ProjectStorage
+from summary import SummaryManager
 
 
 def get_prd_summary(prd_manager: PRD, prd_name: str) -> dict:
@@ -209,6 +210,25 @@ def main():
     if not project_storage.ninho_path.exists():
         # No Ninho data for this project yet
         return 0
+
+    # Check for pending summaries at period boundaries
+    try:
+        summary_manager = SummaryManager(project_storage, storage)
+        pending = summary_manager.check_pending_summaries()
+
+        for period_type, period in pending:
+            if period_type == SummaryManager.WEEKLY:
+                summary_manager.generate_weekly_summary(period)
+                print(f"Generated weekly summary for {period}", file=sys.stderr)
+            elif period_type == SummaryManager.MONTHLY:
+                summary_manager.generate_monthly_summary(period)
+                print(f"Generated monthly summary for {period}", file=sys.stderr)
+            elif period_type == SummaryManager.YEARLY:
+                summary_manager.generate_yearly_summary(period)
+                print(f"Generated yearly summary for {period}", file=sys.stderr)
+    except Exception as e:
+        # Don't fail session start if summary generation fails
+        print(f"Warning: Summary generation failed: {e}", file=sys.stderr)
 
     # Get all PRDs
     prd_manager = PRD(project_storage)

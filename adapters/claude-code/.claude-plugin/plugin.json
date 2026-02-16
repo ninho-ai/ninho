@@ -30,7 +30,7 @@
   ],
   "capabilities": {
     "hooks": ["SessionStart", "SessionEnd", "PreCompact", "Stop"],
-    "commands": ["status", "prd-list", "search", "digest", "link-pr", "pr-context"],
+    "commands": ["status", "prd-list", "search", "digest", "link-pr", "pr-context", "weekly", "monthly", "yearly"],
     "agents": ["prd-maintainer"]
   },
   "requirements": {

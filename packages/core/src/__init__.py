@@ -10,6 +10,7 @@ from .pr_integration import PRIntegration
 from .prd import PRD
 from .prd_capture import PRDCapture
 from .storage import ProjectStorage, Storage
+from .summary import SummaryManager
 
 __version__ = "1.0.0"
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "PRD",
     "PRDCapture",
     "PRIntegration",
+    "SummaryManager",
 ]
