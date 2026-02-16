@@ -327,10 +327,10 @@ def main():
     prd_manager = PRD(project_storage)
     pr_integration = PRIntegration(project_storage)
 
-    # Append response summary to today's prompt file (always, no throttle)
+    # Write response summary to pending file (consumed by next UserPromptSubmit)
     response_summary = capture.get_last_assistant_summary()
     if response_summary:
-        project_storage.append_response_summary(response_summary)
+        project_storage.write_pending_summary(response_summary)
 
     # Check for PR-related commands (high priority, no throttle)
     pr_command = detect_pr_commands(transcript_path)

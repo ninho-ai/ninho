@@ -321,26 +321,48 @@ class ProjectStorage:
         # Return line reference
         return f"prompts/{date.strftime('%Y-%m-%d')}.md#L{line_count + 1}"
 
-    def append_response_summary(
-        self,
-        summary: str,
-        date: Optional[datetime] = None,
-    ) -> None:
+    def write_pending_summary(self, summary: str) -> None:
         """
-        Append an LLM response summary to the daily prompts file.
+        Write a response summary to a pending file.
 
-        Appends after the last prompt entry so each prompt is paired
-        with the response it triggered.
+        The next UserPromptSubmit hook will consume this and insert it
+        at the correct position in the prompt file (after the prompt it
+        belongs to, before the next prompt).
 
         Args:
             summary: Brief summary of the LLM response.
-            date: Date for the file. Defaults to today.
         """
+        pending_path = self.ninho_path / ".pending-summary"
+        self.write_file(pending_path, summary)
+
+    def consume_pending_summary(
+        self,
+        date: Optional[datetime] = None,
+    ) -> bool:
+        """
+        Read and apply any pending response summary to the prompt file.
+
+        Called by UserPromptSubmit (sync) before saving a new prompt,
+        and by SessionEnd to capture the last response's summary.
+
+        Returns:
+            True if a summary was consumed.
+        """
+        pending_path = self.ninho_path / ".pending-summary"
+        if not pending_path.exists():
+            return False
+
+        summary = self.read_file(pending_path)
+        if not summary or not summary.strip():
+            pending_path.unlink(missing_ok=True)
+            return False
+
         if date is None:
             date = datetime.now()
 
         file_path = self.prompts_path / f"{date.strftime('%Y-%m-%d')}.md"
-        if not file_path.exists():
-            return
+        if file_path.exists():
+            self.append_file(file_path, f"\u2190 {summary.strip()}\n")
 
-        self.append_file(file_path, f"\u2190 {summary}\n")
+        pending_path.unlink(missing_ok=True)
+        return True

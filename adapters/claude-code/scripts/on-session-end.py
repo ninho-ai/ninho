@@ -46,6 +46,9 @@ def main():
     prd_capture = PRDCapture(project_storage)
     prd_manager = PRD(project_storage)
 
+    # Consume any pending response summary from the last exchange
+    project_storage.consume_pending_summary()
+
     # Extract prompts
     prompts = capture.get_user_prompts()
     if not prompts:

@@ -45,6 +45,11 @@ def main():
     if prd_capture._is_duplicate(prompt):
         return 0
 
+    # Consume any pending response summary from the previous exchange
+    # (must happen before saving new prompt so summary lands after
+    # the previous prompt, not after this one)
+    project_storage.consume_pending_summary()
+
     # Detect feature context from prompt
     feature = _detect_feature(prompt) or "general"
 
