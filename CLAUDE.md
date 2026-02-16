@@ -250,6 +250,20 @@ ls -la .ninho/prompts/
 The plugin should be registered at:
 `~/.claude/settings.json` -> `enabledPlugins` array
 
+## Session End Procedure
+
+**Standard procedure when finishing a coding session:**
+
+1. **Commit changes** - Stage and commit all work with a descriptive message
+2. **Push to remote** - Push commits to origin
+3. **Monitor CI** - Watch the CI pipeline until it passes:
+   ```bash
+   gh run watch <run-id> --exit-status
+   ```
+4. **Fix any failures** - If CI fails, fix the issue and repeat steps 1-3
+
+This ensures all work is safely persisted and verified before ending the session.
+
 ---
 
 *Ninho automatically captures requirements, decisions, and questions from your prompts. Just code normally - PRDs are generated when sessions end or compact. Weekly/monthly/yearly summaries are auto-generated at period boundaries with breadcrumb links to original prompts.*
