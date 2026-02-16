@@ -165,11 +165,13 @@ class Capture:
 
         return None
 
-    def get_last_assistant_summary(self, max_length: int = 150) -> Optional[str]:
+    def get_last_assistant_summary(self, max_length: int = 200) -> Optional[str]:
         """
-        Get a brief summary of the last assistant response.
+        Get a summary of the full assistant response to the last user prompt.
 
-        Extracts the first sentence of text and lists tools used.
+        Collects all assistant entries after the last user message,
+        extracts text, files edited, and tools used to build a
+        comprehensive one-line summary.
 
         Args:
             max_length: Maximum length for the text portion.
@@ -178,37 +180,83 @@ class Capture:
             Summary string or None if no assistant response found.
         """
         entries = self._load_transcript()
+        if not entries:
+            return None
 
-        for entry in reversed(entries):
-            if entry.get("type") == "assistant":
-                message = entry.get("message", {})
-                content = message.get("content", [])
+        # Find the last user entry index
+        last_user_idx = -1
+        for i in range(len(entries) - 1, -1, -1):
+            if entries[i].get("type") == "user":
+                last_user_idx = i
+                break
 
-                text_parts = []
-                tools_used = []
+        if last_user_idx == -1:
+            return None
 
-                for block in content:
-                    if isinstance(block, dict):
-                        if block.get("type") == "text":
-                            text_parts.append(block.get("text", ""))
-                        elif block.get("type") == "tool_use":
-                            tools_used.append(block.get("name", ""))
+        # Collect all assistant content after the last user message
+        all_text = []
+        tools_used = []
+        files_edited = []
+        files_read = []
 
-                summary_parts = []
+        for entry in entries[last_user_idx + 1:]:
+            if entry.get("type") != "assistant":
+                continue
+            content = entry.get("message", {}).get("content", [])
+            for block in content:
+                if not isinstance(block, dict):
+                    continue
+                if block.get("type") == "text":
+                    text = block.get("text", "").strip()
+                    if text:
+                        all_text.append(text)
+                elif block.get("type") == "tool_use":
+                    name = block.get("name", "")
+                    inputs = block.get("input", {})
+                    if name in ("Edit", "Write", "NotebookEdit"):
+                        path = inputs.get("file_path") or inputs.get("notebook_path", "")
+                        if path:
+                            short = path.rsplit("/", 1)[-1]
+                            if short not in files_edited:
+                                files_edited.append(short)
+                    elif name == "Read":
+                        path = inputs.get("file_path", "")
+                        if path:
+                            short = path.rsplit("/", 1)[-1]
+                            if short not in files_read:
+                                files_read.append(short)
+                    if name not in tools_used:
+                        tools_used.append(name)
 
-                if text_parts:
-                    full_text = " ".join(text_parts).strip()
-                    # Get first sentence
-                    first_sentence = re.split(r'(?<=[.!?])\s', full_text, maxsplit=1)[0]
-                    if len(first_sentence) > max_length:
-                        first_sentence = first_sentence[:max_length] + "..."
-                    summary_parts.append(first_sentence)
+        if not all_text and not tools_used:
+            return None
 
-                if tools_used:
-                    unique_tools = list(dict.fromkeys(tools_used))
-                    summary_parts.append(f"[{', '.join(unique_tools)}]")
+        # Build summary from combined text: first and last sentences
+        parts = []
+        if all_text:
+            combined = " ".join(all_text)
+            # Clean markdown artifacts
+            combined = re.sub(r'\*\*|##|`{1,3}', '', combined).strip()
+            sentences = re.split(r'(?<=[.!?])\s+', combined)
+            sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
 
-                if summary_parts:
-                    return " ".join(summary_parts)
+            if sentences:
+                summary_text = sentences[0]
+                # Add last sentence if different and there are many
+                if len(sentences) > 3:
+                    last = sentences[-1]
+                    if last != summary_text:
+                        summary_text += " ... " + last
+                if len(summary_text) > max_length:
+                    summary_text = summary_text[:max_length] + "..."
+                parts.append(summary_text)
 
-        return None
+        # Add files edited
+        if files_edited:
+            parts.append(f"edited: {', '.join(files_edited[:5])}")
+
+        # Add files read (only if no edits, to keep it concise)
+        if not files_edited and files_read:
+            parts.append(f"read: {', '.join(files_read[:5])}")
+
+        return " | ".join(parts) if parts else None
