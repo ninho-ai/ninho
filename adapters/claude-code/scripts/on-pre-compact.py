@@ -7,7 +7,6 @@ Runs synchronously to ensure capture before data is lost.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ SCRIPT_DIR = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
 from capture import Capture
+from common import get_cwd
 from learnings import Learnings
 from prd import PRD
 from prd_capture import PRDCapture
@@ -36,7 +36,7 @@ def main():
         print("Error: No transcript_path provided", file=sys.stderr)
         return 1
 
-    cwd = input_data.get("cwd", os.getcwd())
+    cwd = get_cwd(input_data)
 
     # Initialize components
     storage = Storage()

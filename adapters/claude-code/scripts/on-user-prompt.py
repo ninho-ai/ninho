@@ -7,7 +7,6 @@ Runs synchronously to ensure prompt is saved before processing.
 """
 
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +15,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
+from common import get_cwd
 from prd import PRD
 from prd_capture import PRDCapture
 from storage import ProjectStorage
@@ -34,7 +34,7 @@ def main():
     if not prompt:
         return 0
 
-    cwd = input_data.get("cwd", os.getcwd())
+    cwd = get_cwd(input_data)
 
     # Initialize components
     project_storage = ProjectStorage(cwd)

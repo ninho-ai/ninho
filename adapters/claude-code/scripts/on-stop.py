@@ -8,7 +8,6 @@ Runs asynchronously to avoid blocking the user's workflow.
 """
 
 import json
-import os
 import re
 import sys
 import time
@@ -19,6 +18,7 @@ SCRIPT_DIR = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
 from capture import Capture
+from common import get_cwd
 from prd import PRD
 from pr_integration import PRIntegration
 from storage import ProjectStorage
@@ -316,7 +316,7 @@ def main():
         return 1
 
     transcript_path = input_data.get("transcript_path")
-    cwd = input_data.get("cwd", os.getcwd())
+    cwd = get_cwd(input_data)
 
     if not transcript_path:
         return 1

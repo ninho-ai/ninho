@@ -7,7 +7,6 @@ Helps Claude understand project decisions and requirements from the start.
 """
 
 import json
-import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -16,6 +15,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "packages" / "core" / "src"))
 
+from common import get_cwd
 from prd import PRD
 from storage import Storage, ProjectStorage
 from summary import SummaryManager
@@ -200,7 +200,7 @@ def main():
     except json.JSONDecodeError:
         return 1
 
-    cwd = input_data.get("cwd", os.getcwd())
+    cwd = get_cwd(input_data)
 
     # Initialize storage
     storage = Storage()

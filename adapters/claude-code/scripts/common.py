@@ -101,17 +101,51 @@ def safe_run(func):
     return wrapper
 
 
+def find_project_root(start_dir: str) -> str:
+    """
+    Walk up from start_dir looking for project root markers.
+
+    Searches by priority: .claude/ first (full walk), then .git/,
+    then CLAUDE.md. Higher-priority markers at any ancestor take
+    precedence over lower-priority markers closer to start_dir.
+    Falls back to start_dir if no marker found.
+
+    Args:
+        start_dir: Directory to start searching from.
+
+    Returns:
+        Project root directory path.
+    """
+    markers = [".claude", ".git", "CLAUDE.md"]
+
+    for marker in markers:
+        current = Path(start_dir).resolve()
+        while True:
+            if (current / marker).exists():
+                return str(current)
+            parent = current.parent
+            if parent == current:
+                break
+            current = parent
+
+    return start_dir
+
+
 def get_cwd(input_data: dict) -> str:
     """
-    Get current working directory from input or environment.
+    Get project root directory from input or environment.
+
+    Resolves the true project root by walking up from the raw cwd
+    to find project markers (.claude/, .git/, CLAUDE.md).
 
     Args:
         input_data: Hook input dictionary.
 
     Returns:
-        Current working directory path.
+        Project root directory path.
     """
-    return input_data.get("cwd", os.getcwd())
+    raw_cwd = input_data.get("cwd", os.getcwd())
+    return find_project_root(raw_cwd)
 
 
 def get_transcript_path(input_data: dict) -> str:
@@ -127,13 +161,15 @@ def get_transcript_path(input_data: dict) -> str:
     return input_data.get("transcript_path")
 
 
-def ensure_ninho_dirs(cwd: str):
+def ensure_ninho_dirs(input_data: dict = None):
     """
     Ensure Ninho directories exist.
 
     Args:
-        cwd: Current working directory.
+        input_data: Hook input dictionary (optional). Used to resolve project root.
     """
+    cwd = get_cwd(input_data or {})
+
     # Global storage
     global_path = Path.home() / ".ninho"
     global_path.mkdir(parents=True, exist_ok=True)
