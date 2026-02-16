@@ -1,0 +1,83 @@
+#!/usr/bin/env node
+
+/**
+ * Ninho CLI
+ *
+ * Command-line interface for Ninho context management.
+ */
+
+const { execSync, spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+const NINHO_HOME = process.env.NINHO_HOME || path.join(require('os').homedir(), '.ninho');
+
+const commands = {
+  status: () => {
+    console.log('Ninho Status\n');
+
+    // Check for daily learnings
+    const dailyDir = path.join(NINHO_HOME, 'daily');
+    if (fs.existsSync(dailyDir)) {
+      const files = fs.readdirSync(dailyDir).filter(f => f.endsWith('.md')).sort().reverse();
+      if (files.length > 0) {
+        console.log('Recent learnings:');
+        files.slice(0, 3).forEach(file => {
+          console.log(`  - ${file}`);
+        });
+        console.log('');
+      }
+    }
+
+    // Check for project PRDs
+    const projectNinho = path.join(process.cwd(), '.ninho', 'prds');
+    if (fs.existsSync(projectNinho)) {
+      const prds = fs.readdirSync(projectNinho).filter(f => f.endsWith('.md'));
+      if (prds.length > 0) {
+        console.log('Project PRDs:');
+        prds.forEach(prd => {
+          console.log(`  - ${prd.replace('.md', '')}`);
+        });
+        console.log('');
+      }
+    }
+
+    console.log(`Storage: ${NINHO_HOME}`);
+  },
+
+  update: () => {
+    console.log('Updating Ninho...\n');
+    try {
+      execSync('git pull', { cwd: NINHO_HOME, stdio: 'inherit' });
+      console.log('\n✅ Ninho updated!');
+    } catch (error) {
+      console.error('Failed to update:', error.message);
+      process.exit(1);
+    }
+  },
+
+  help: () => {
+    console.log(`
+Ninho CLI - Where your codebase decisions live
+
+Usage: ninho <command>
+
+Commands:
+  status    Show current PRDs and recent learnings
+  update    Update Ninho to the latest version
+  help      Show this help message
+
+For more information, visit https://ninho.ai
+    `.trim());
+  },
+};
+
+const command = process.argv[2] || 'help';
+
+if (commands[command]) {
+  commands[command]();
+} else {
+  console.error(`Unknown command: ${command}`);
+  commands.help();
+  process.exit(1);
+}

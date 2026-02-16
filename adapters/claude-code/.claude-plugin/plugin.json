@@ -1,0 +1,17 @@
+{
+  "name": "ninho",
+  "version": "1.0.0",
+  "description": "Where your codebase decisions live - track context from AI coding sessions",
+  "author": {
+    "name": "Ninho",
+    "url": "https://ninho.ai"
+  },
+  "repository": "https://github.com/ninho-ai/ninho",
+  "keywords": [
+    "prd",
+    "context",
+    "memory",
+    "learnings",
+    "documentation"
+  ]
+}

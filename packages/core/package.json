@@ -1,0 +1,28 @@
+{
+  "name": "@ninho/core",
+  "version": "1.0.0",
+  "description": "Core library for AI coding context management",
+  "main": "src/index.py",
+  "scripts": {
+    "test": "python -m pytest tests/",
+    "lint": "ruff check src/"
+  },
+  "keywords": [
+    "ai-coding",
+    "context",
+    "claude-code",
+    "prd",
+    "memory"
+  ],
+  "author": "Ninho <hello@ninho.ai>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninho-ai/ninho.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/ninho-ai/ninho/issues"
+  },
+  "homepage": "https://ninho.ai"
+}

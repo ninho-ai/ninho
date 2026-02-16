@@ -1,0 +1,25 @@
+{
+  "name": "@ninho/cli",
+  "version": "1.0.0",
+  "description": "CLI for Ninho - AI coding context management",
+  "bin": {
+    "ninho": "./bin/ninho"
+  },
+  "scripts": {
+    "test": "echo 'No tests yet'",
+    "lint": "echo 'No lint yet'"
+  },
+  "keywords": [
+    "cli",
+    "ai-coding",
+    "context",
+    "claude-code"
+  ],
+  "author": "Ninho <hello@ninho.ai>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninho-ai/ninho.git",
+    "directory": "packages/cli"
+  }
+}
