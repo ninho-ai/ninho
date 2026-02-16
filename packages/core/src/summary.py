@@ -8,13 +8,12 @@ with breadcrumb references to original prompts.
 import json
 import re
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Optional
 
 try:
-    from .storage import Storage, ProjectStorage
+    from .storage import ProjectStorage, Storage
 except ImportError:
-    from storage import Storage, ProjectStorage
+    from storage import ProjectStorage, Storage
 
 
 class SummaryManager:
