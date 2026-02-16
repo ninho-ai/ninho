@@ -6,6 +6,8 @@ dist/
 build/
 *.pyc
 __pycache__/
+.next/
+out/
 
 # Environment
 .env
