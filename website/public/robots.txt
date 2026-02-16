@@ -3,3 +3,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://ninho.ai/sitemap.xml
+
+# LLM/AI-readable documentation
+# See https://ninho.ai/llms.txt

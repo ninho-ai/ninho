@@ -59,14 +59,23 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'SoftwareApplication',
               name: 'Ninho',
-              description: 'Context management plugin for AI coding assistants',
+              description: 'Context management plugin for AI coding assistants. Automatically captures decisions, requirements, and learnings from Claude Code sessions. Creates PRDs from conversations.',
               applicationCategory: 'DeveloperApplication',
               operatingSystem: 'macOS, Linux, Windows',
+              url: 'https://ninho.ai',
+              downloadUrl: 'https://pypi.org/project/ninho-core/',
+              softwareVersion: '1.0.0',
+              author: {
+                '@type': 'Organization',
+                name: 'Ninho',
+                url: 'https://ninho.ai',
+              },
               offers: {
                 '@type': 'Offer',
                 price: '0',
                 priceCurrency: 'USD',
               },
+              keywords: 'AI coding, Claude Code, context management, PRD, memory, developer tools',
             }),
           }}
         />
