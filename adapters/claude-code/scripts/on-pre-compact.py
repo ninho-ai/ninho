@@ -8,6 +8,7 @@ Runs synchronously to ensure capture before data is lost.
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # Add core library to path
@@ -49,6 +50,8 @@ def main():
     # Extract prompts
     prompts = capture.get_user_prompts()
     if not prompts:
+        # Still write snapshot even if no new prompts - compaction happened
+        write_session_snapshot(project_storage, prd_manager, capture)
         return 0
 
     # Detect feature context for tagging
@@ -93,7 +96,6 @@ def main():
             summary = item.get("summary", text[:80])
 
             # Generate prompt reference (prompt already saved above)
-            from datetime import datetime
             prompt_date = datetime.now().strftime("%Y-%m-%d")
             prompt_ref = f"prompts/{prompt_date}.md"
 
@@ -116,7 +118,43 @@ def main():
 
         print(f"Pre-compact: Captured {len(prd_items)} PRD items for '{feature}'")
 
+    # Write session snapshot for post-compaction context re-injection
+    write_session_snapshot(project_storage, prd_manager, capture)
+
     return 0
+
+
+def _get_compaction_count(project_storage: ProjectStorage) -> int:
+    """Read compaction count from existing session snapshot, or 0."""
+    snapshot_path = project_storage.ninho_path / ".session-snapshot.json"
+    if not snapshot_path.exists():
+        return 0
+    try:
+        data = json.loads(snapshot_path.read_text())
+        return data.get("compaction_count", 0)
+    except (json.JSONDecodeError, OSError):
+        return 0
+
+
+def write_session_snapshot(
+    project_storage: ProjectStorage,
+    prd_manager: PRD,
+    capture: Capture,
+) -> None:
+    """Write a session snapshot for post-compaction context re-injection."""
+    try:
+        snapshot = {
+            "timestamp": datetime.now().isoformat(),
+            "active_feature": capture.detect_feature_context(),
+            "modified_files": capture.get_modified_files()[:10],
+            "prd_names": prd_manager.list_prds(),
+            "compaction_count": _get_compaction_count(project_storage) + 1,
+        }
+        snapshot_path = project_storage.ninho_path / ".session-snapshot.json"
+        project_storage.write_file(snapshot_path, json.dumps(snapshot, indent=2))
+        print("Pre-compact: Wrote session snapshot for context restoration")
+    except Exception as e:
+        print(f"Warning: Failed to write session snapshot: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

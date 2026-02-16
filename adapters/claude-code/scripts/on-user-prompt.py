@@ -21,6 +21,51 @@ from prd_capture import PRDCapture
 from storage import ProjectStorage
 
 
+def _check_post_compaction_reminder(project_storage: ProjectStorage) -> None:
+    """
+    Print a one-time reminder after context compaction.
+
+    Compares compaction_count in .session-snapshot.json against
+    .last-compact-seen.  Fires only once per compaction event.
+    """
+    snapshot_path = project_storage.ninho_path / ".session-snapshot.json"
+    seen_path = project_storage.ninho_path / ".last-compact-seen"
+
+    if not snapshot_path.exists():
+        return
+
+    try:
+        snapshot = json.loads(snapshot_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return
+
+    current_count = snapshot.get("compaction_count", 0)
+    if current_count <= 0:
+        return
+
+    # Read last acknowledged compaction count
+    last_seen = 0
+    if seen_path.exists():
+        try:
+            last_seen = int(seen_path.read_text().strip())
+        except (ValueError, OSError):
+            last_seen = 0
+
+    if current_count > last_seen:
+        # Fire one-time reminder
+        feature = snapshot.get("active_feature") or "unknown"
+        print(
+            f"[Ninho] Context was compacted. "
+            f"Active feature: {feature}. "
+            f"Check .ninho/prds/ for decisions."
+        )
+        # Update seen counter
+        try:
+            seen_path.write_text(str(current_count))
+        except OSError:
+            pass
+
+
 def main():
     """Main entry point for UserPromptSubmit hook."""
     # Read hook input from stdin
@@ -38,6 +83,9 @@ def main():
 
     # Initialize components
     project_storage = ProjectStorage(cwd)
+
+    # Check if we need to remind about compaction (fires once per compaction)
+    _check_post_compaction_reminder(project_storage)
     prd_capture = PRDCapture(project_storage)
     prd_manager = PRD(project_storage)
 
