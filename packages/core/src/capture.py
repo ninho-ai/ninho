@@ -59,11 +59,14 @@ class Capture:
 
                 # Extract text from content blocks
                 text_parts = []
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        text_parts.append(block.get("text", ""))
-                    elif isinstance(block, str):
-                        text_parts.append(block)
+                if isinstance(content, str):
+                    text_parts.append(content)
+                else:
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                        elif isinstance(block, str):
+                            text_parts.append(block)
 
                 if text_parts:
                     prompts.append({
